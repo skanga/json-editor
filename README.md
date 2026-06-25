@@ -57,13 +57,13 @@ mvn package
 Run without arguments to open the last file from history:
 
 ```sh
-java -jar target/json-editor-0.1.jar
+java -jar target/json-editor-0.1.1.jar
 ```
 
 Start with a specific JSON file:
 
 ```sh
-java -jar target/json-editor-0.1.jar path/to/file.json
+java -jar target/json-editor-0.1.1.jar path/to/file.json
 ```
 
 ## Editing Model
@@ -141,7 +141,7 @@ mvn clean package
 The runnable shaded JAR is written to:
 
 ```text
-target/json-editor-0.1.jar
+target/json-editor-0.1.1.jar
 ```
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes.
