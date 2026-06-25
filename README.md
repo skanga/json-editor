@@ -7,9 +7,11 @@ The editor loads a JSON document into a navigable tree, shows the selected node 
 ## Features
 
 - Open a `.json` file from the command line, file picker, recent-file history, or drag and drop.
+- Automatically remove missing files from the recent-file history when opened.
 - Browse nested object and array content in a JSON tree.
 - Filter the tree by JSON path, visible key name, or value text.
 - Edit values as typed JSON literals or raw text.
+- Find text inside the active value editor with match highlighting and keyboard navigation.
 - Add, rename, duplicate, delete, and reorder JSON nodes.
 - Copy the selected node path.
 - Save JSON as nested object/array data.
@@ -128,7 +130,7 @@ Published releases are available on GitHub:
 
 https://github.com/skanga/json-editor/releases
 
-The current release line is `v0.1.0`, which includes the tree editor, Maven build, and duplicate-key warning workflow.
+The current release line is `v0.1.1`, which adds value-editor find and recent-file cleanup.
 
 For local release builds:
 

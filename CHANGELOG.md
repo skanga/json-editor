@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.1 - 2026-06-25
+
+### Added
+
+- Value editor find bar with match highlighting, counts, previous/next navigation, and keyboard shortcuts.
+
+### Fixed
+
+- Missing files opened from the recent-file list are removed from history and the menu.
+
 ## v0.1.0 - 2026-06-25
 
 Initial public release.
