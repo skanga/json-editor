@@ -1,0 +1,6 @@
+target/
+dist/
+.idea
+i18n-editor.iml
+data/
+.agents/
