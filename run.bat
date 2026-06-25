@@ -1,1 +1,0 @@
-c:\lang\jdk-25\bin\java --enable-native-access=ALL-UNNAMED -jar target\json-editor-0.1.jar %*

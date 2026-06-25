@@ -64,14 +64,6 @@ Start with a specific JSON file:
 java -jar target/json-editor-0.1.jar path/to/file.json
 ```
 
-On Windows, the helper scripts can also be used:
-
-```bat
-build.bat
-run.bat
-brun.bat
-```
-
 ## Editing Model
 
 Keys are represented as JSON paths. For example:

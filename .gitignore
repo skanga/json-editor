@@ -4,3 +4,4 @@ dist/
 i18n-editor.iml
 data/
 .agents/
+*.bat
