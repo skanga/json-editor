@@ -1193,8 +1193,19 @@ public class Editor extends JFrame {
             importJsonFile(path, showError);
         } else if (Files.isDirectory(path)) {
             importProject(path, showError);
-        } else if (showError) {
-            showError(MessageBundle.get("file.open.error.single", path));
+        } else {
+            removeFromHistory(path);
+            if (showError) {
+                showError(MessageBundle.get("file.open.error.single", path));
+            }
+        }
+    }
+
+    private void removeFromHistory(Path path) {
+        List<String> recentDirs = settings.getHistory();
+        if (recentDirs.remove(path.toString())) {
+            settings.setHistory(recentDirs);
+            editorMenu.setRecentItems(recentDirs.reversed());
         }
     }
 
@@ -1628,7 +1639,7 @@ public class Editor extends JFrame {
         }
         // Inject the location/path inside the single <html> document so the JLabel renders it.
         int close = summary.lastIndexOf("</html>");
-        if (close >= 0 && extra.length() > 0) {
+        if (close >= 0 && !extra.isEmpty()) {
             summary.insert(close, extra);
         }
         String detail = err.message();
@@ -1852,6 +1863,7 @@ public class Editor extends JFrame {
                     return;
                 }
             }
+            assert jsonValueEditorPanel != null;
             jsonValueEditorPanel.applyValue();
             JsonTreeNode node = jsonTree.getSelectionNode();
 

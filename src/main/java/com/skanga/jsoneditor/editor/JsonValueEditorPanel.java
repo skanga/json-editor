@@ -26,6 +26,7 @@ import java.awt.event.MouseEvent;
 import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -53,6 +54,9 @@ import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultHighlighter;
+import javax.swing.text.Highlighter;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.skanga.jsoneditor.model.JsonDocument;
@@ -118,6 +122,11 @@ public class JsonValueEditorPanel extends JPanel {
 	private final JToggleButton typedModeButton = new JToggleButton("Typed", true);
 	private final JToggleButton rawModeButton = new JToggleButton("Raw");
 	private final JCheckBox wrapTextBox = new JCheckBox(MessageBundle.get("jsonvalue.wrap.title"));
+	private final JTextField findField = new JTextField(10);
+	private final JButton findPreviousButton = new JButton(new ActionIcon(ActionIcon.Kind.UP));
+	private final JButton findNextButton = new JButton(new ActionIcon(ActionIcon.Kind.DOWN));
+	private final JLabel findMatchLabel = new JLabel("0 / 0");
+	private final JPanel findControlsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
 	private final CardLayout cardLayout = new CardLayout();
 	private final CardLayout editorCardLayout = new CardLayout();
 	private final JPanel valueCards = new VisibleCardPanel(cardLayout);
@@ -149,6 +158,8 @@ public class JsonValueEditorPanel extends JPanel {
 	private boolean wrapLongTextValues;
 	private Runnable dirtyChangeCallback;
 	private String currentKey = "";
+	private List<TextMatch> findMatches = List.of();
+	private int findMatchIndex = -1;
 	
 	public JsonValueEditorPanel(Actions actions) {
 		this(actions, false, ignored -> {});
@@ -505,10 +516,37 @@ public class JsonValueEditorPanel extends JPanel {
 		togglePanel.add(rawModeButton);
 		JPanel controlsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
 		controlsPanel.setOpaque(false);
+		setupFindControls();
+		controlsPanel.add(findControlsPanel);
 		controlsPanel.add(wrapTextBox);
 		controlsPanel.add(togglePanel);
 		panel.add(controlsPanel, BorderLayout.EAST);
 		return panel;
+	}
+
+	private void setupFindControls() {
+		findField.setToolTipText(MessageBundle.get("jsonvalue.find.tooltip"));
+		findField.putClientProperty("JTextField.placeholderText", MessageBundle.get("jsonvalue.find.placeholder"));
+		findPreviousButton.setToolTipText(MessageBundle.get("jsonvalue.find.previous.tooltip"));
+		findNextButton.setToolTipText(MessageBundle.get("jsonvalue.find.next.tooltip"));
+		setupFindButton(findPreviousButton);
+		setupFindButton(findNextButton);
+		findMatchLabel.setForeground(secondaryTextColor());
+		findControlsPanel.setOpaque(false);
+		findControlsPanel.add(findField);
+		findControlsPanel.add(findPreviousButton);
+		findControlsPanel.add(findNextButton);
+		findControlsPanel.add(findMatchLabel);
+	}
+
+	private void setupFindButton(JButton button) {
+		button.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
+		button.setFocusPainted(false);
+		button.setMargin(new Insets(2, 2, 2, 2));
+		Dimension size = new Dimension(26, 26);
+		button.setMinimumSize(size);
+		button.setPreferredSize(size);
+		button.setMaximumSize(size);
 	}
 	
 	private JPanel createValueSection() {
@@ -594,6 +632,14 @@ public class JsonValueEditorPanel extends JPanel {
 		typedText.getDocument().addDocumentListener(listener);
 		typedNumber.getDocument().addDocumentListener(listener);
 		rawText.getDocument().addDocumentListener(listener);
+		findField.getDocument().addDocumentListener(new DocumentListener() {
+			@Override
+			public void insertUpdate(DocumentEvent e) { refreshFind(); }
+			@Override
+			public void removeUpdate(DocumentEvent e) { refreshFind(); }
+			@Override
+			public void changedUpdate(DocumentEvent e) { refreshFind(); }
+		});
 		typedBooleanTrue.addActionListener(e -> updateControls());
 		typedBooleanFalse.addActionListener(e -> updateControls());
 		typedModeButton.addActionListener(e -> updateMode());
@@ -614,6 +660,9 @@ public class JsonValueEditorPanel extends JPanel {
 		typedNumber.getActionMap().put("applyValue", applyAct);
 		rawText.getInputMap().put(ctrlEnter, "applyValue");
 		rawText.getActionMap().put("applyValue", applyAct);
+		bindFindKeys();
+		findPreviousButton.addActionListener(e -> moveFindMatch(-1));
+		findNextButton.addActionListener(e -> moveFindMatch(1));
 		revertButton.addActionListener(e -> bindNode());
 		typeCombo.addActionListener(e -> {
 			if (!updating && node != null && !node.isRoot()) {
@@ -631,6 +680,7 @@ public class JsonValueEditorPanel extends JPanel {
 		try {
 			String key = node == null ? "" : node.getKey();
 			currentKey = key;
+			clearFindQuery();
 			if (node == null) {
 				titleLabel.setText("No selection");
 				pathField.setText("");
@@ -679,6 +729,48 @@ public class JsonValueEditorPanel extends JPanel {
 		updateMode();
 		updateControls();
 	}
+
+	private void bindFindKeys() {
+		KeyStroke ctrlF = KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK);
+		getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(ctrlF, "focusFind");
+		getActionMap().put("focusFind", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (findControlsPanel.isVisible()) {
+					findField.requestFocusInWindow();
+					findField.selectAll();
+				}
+			}
+		});
+		bindFindKey(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "findNext", 1);
+		bindFindKey(KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0), "findNext", 1);
+		bindFindKey(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK), "findPrevious", -1);
+		bindFindKey(KeyStroke.getKeyStroke(KeyEvent.VK_F3, InputEvent.SHIFT_DOWN_MASK), "findPrevious", -1);
+		findField.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "clearFind");
+		findField.getActionMap().put("clearFind", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (!findField.getText().isEmpty()) {
+					findField.setText("");
+					return;
+				}
+				JTextArea editor = activeFindEditor();
+				if (editor != null) {
+					editor.requestFocusInWindow();
+				}
+			}
+		});
+	}
+
+	private void bindFindKey(KeyStroke keyStroke, String name, int direction) {
+		findField.getInputMap().put(keyStroke, name);
+		findField.getActionMap().put(name, new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				moveFindMatch(direction);
+			}
+		});
+	}
 	
 	private void updateMode() {
 		boolean rawMode = rawModeButton.isSelected();
@@ -724,6 +816,7 @@ public class JsonValueEditorPanel extends JPanel {
 			rawText.setEditable(false);
 			rawText.setEnabled(false);
 			wrapTextBox.setVisible(false);
+			updateFindControls();
 			charCountLabel.setText("");
 			updateValueLayout(false);
 			updateActionStates();
@@ -759,6 +852,7 @@ public class JsonValueEditorPanel extends JPanel {
 		revertButton.setEnabled(node != null && (!valid || dirty));
 		updateValueLayout(rawModeButton.isSelected() || getSelectedJsonType() == JsonNodeType.String);
 		updateWrapControlVisibility();
+		updateFindControls();
 		updateActionStates();
 		updateCharCount();
 		if (dirtyChangeCallback != null) {
@@ -790,6 +884,115 @@ public class JsonValueEditorPanel extends JPanel {
 	private void updateWrapControlVisibility() {
 		wrapTextBox.setVisible(node != null
 				&& (rawModeButton.isSelected() || getSelectedJsonType() == JsonNodeType.String));
+	}
+
+	private void updateFindControls() {
+		boolean visible = activeFindEditor() != null;
+		findControlsPanel.setVisible(visible);
+		findField.setVisible(visible);
+		findPreviousButton.setVisible(visible);
+		findNextButton.setVisible(visible);
+		findMatchLabel.setVisible(visible);
+		findField.setEnabled(visible);
+		if (visible) {
+			refreshFind();
+		} else {
+			clearFindHighlights();
+			findMatches = List.of();
+			findMatchIndex = -1;
+			findMatchLabel.setText("0 / 0");
+		}
+	}
+
+	private JTextArea activeFindEditor() {
+		if (node == null) {
+			return null;
+		}
+		if (rawModeButton.isSelected()) {
+			return rawText;
+		}
+		return getSelectedJsonType() == JsonNodeType.String ? typedText : null;
+	}
+
+	private void clearFindQuery() {
+		if (findField.getText().isEmpty()) {
+			clearFindHighlights();
+			findMatches = List.of();
+			findMatchIndex = -1;
+			findMatchLabel.setText("0 / 0");
+			return;
+		}
+		findField.setText("");
+	}
+
+	private void refreshFind() {
+		JTextArea editor = activeFindEditor();
+		clearFindHighlights();
+		String query = findField.getText();
+		if (editor == null || query.isEmpty()) {
+			findMatches = List.of();
+			findMatchIndex = -1;
+			findMatchLabel.setText("0 / 0");
+			findPreviousButton.setEnabled(false);
+			findNextButton.setEnabled(false);
+			return;
+		}
+		findMatches = findMatches(editor.getText(), query);
+		findMatchIndex = findMatches.isEmpty() ? -1 : 0;
+		highlightMatches(editor);
+		selectFindMatch();
+	}
+
+	private List<TextMatch> findMatches(String text, String query) {
+		List<TextMatch> matches = new ArrayList<>();
+		String haystack = text.toLowerCase(Locale.ROOT);
+		String needle = query.toLowerCase(Locale.ROOT);
+		int index = haystack.indexOf(needle);
+		while (index >= 0) {
+			matches.add(new TextMatch(index, index + needle.length()));
+			index = haystack.indexOf(needle, index + needle.length());
+		}
+		return matches;
+	}
+
+	private void highlightMatches(JTextArea editor) {
+		Highlighter.HighlightPainter painter =
+				new DefaultHighlighter.DefaultHighlightPainter(new Color(255, 230, 130));
+		for (TextMatch match : findMatches) {
+			try {
+				editor.getHighlighter().addHighlight(match.start(), match.end(), painter);
+			} catch (BadLocationException ignored) {
+				// Match offsets came from the current document text.
+			}
+		}
+	}
+
+	private void moveFindMatch(int direction) {
+		if (findMatches.isEmpty()) {
+			refreshFind();
+			return;
+		}
+		findMatchIndex = (findMatchIndex + direction + findMatches.size()) % findMatches.size();
+		selectFindMatch();
+	}
+
+	private void selectFindMatch() {
+		JTextArea editor = activeFindEditor();
+		boolean hasMatches = editor != null && !findMatches.isEmpty() && findMatchIndex >= 0;
+		findPreviousButton.setEnabled(hasMatches);
+		findNextButton.setEnabled(hasMatches);
+		if (!hasMatches) {
+			findMatchLabel.setText("0 / " + findMatches.size());
+			return;
+		}
+		TextMatch match = findMatches.get(findMatchIndex);
+		editor.select(match.start(), match.end());
+		findMatchLabel.setText((findMatchIndex + 1) + " / " + findMatches.size());
+	}
+
+	private void clearFindHighlights() {
+		typedText.getHighlighter().removeAllHighlights();
+		rawText.getHighlighter().removeAllHighlights();
 	}
 
 	private void updateCharCount() {
@@ -1023,6 +1226,8 @@ public class JsonValueEditorPanel extends JPanel {
 			return super.getMinimumSize();
 		}
 	}
+
+	private record TextMatch(int start, int end) {}
 	
 	private static class ActionIcon implements Icon {
 		private static final int SIZE = EditorIconStyle.ICON_SIZE;

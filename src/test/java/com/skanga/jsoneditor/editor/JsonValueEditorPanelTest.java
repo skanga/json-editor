@@ -13,6 +13,8 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Rectangle;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,6 +27,7 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
+import javax.swing.Action;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -35,6 +38,7 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -64,6 +68,9 @@ public class JsonValueEditorPanelTest {
 			"jsonvalue.mode.typed.tooltip",
 			"jsonvalue.mode.raw.tooltip",
 			"jsonvalue.wrap.tooltip",
+			"jsonvalue.find.tooltip",
+			"jsonvalue.find.previous.tooltip",
+			"jsonvalue.find.next.tooltip",
 			"jsonvalue.apply.tooltip",
 			"jsonvalue.revert.tooltip");
 
@@ -533,6 +540,123 @@ public class JsonValueEditorPanelTest {
 		int gap = componentX(panel, typedButton) - componentRightX(panel, wrapBox);
 		assertTrue(gap >= 0 && gap <= 18);
 	}
+
+	@Test
+	public void findControlsAreVisibleOnlyForActiveTextEditors() {
+		JsonDocument jsonDocument = resource(Map.of(
+				"/name", "\"Ada\"",
+				"/count", "42",
+				"/enabled", "true",
+				"/empty", "null",
+				"/items", "array",
+				"/items/0", "\"x\""));
+		JsonValueEditorPanel panel = new JsonValueEditorPanel(testActions(jsonDocument), false, ignored -> {});
+		JTextField findField = findTextFieldByTooltip(panel, MessageBundle.get("jsonvalue.find.tooltip"));
+
+		panel.setNode(new JsonTreeModel(jsonDocument.getEntries()).getNodeByKey("/name"), List.of(jsonDocument));
+		assertTrue(findField.isVisible());
+
+		panel.setNode(new JsonTreeModel(jsonDocument.getEntries()).getNodeByKey("/count"), List.of(jsonDocument));
+		assertFalse(findField.isVisible());
+
+		panel.setNode(new JsonTreeModel(jsonDocument.getEntries()).getNodeByKey("/enabled"), List.of(jsonDocument));
+		assertFalse(findField.isVisible());
+
+		panel.setNode(new JsonTreeModel(jsonDocument.getEntries()).getNodeByKey("/empty"), List.of(jsonDocument));
+		assertFalse(findField.isVisible());
+
+		panel.setNode(new JsonTreeModel(jsonDocument.getEntries()).getNodeByKey("/items"), List.of(jsonDocument));
+		assertFalse(findField.isVisible());
+
+		panel.setRawMode(true);
+		assertTrue(findField.isVisible());
+	}
+
+	@Test
+	public void findSelectsCaseInsensitiveMatchesAndButtonsWrap() {
+		JsonDocument jsonDocument = resource(Map.of("/text", "\"Alpha beta alpha\""));
+		JsonValueEditorPanel panel = new JsonValueEditorPanel(testActions(jsonDocument));
+		panel.setNode(new JsonTreeModel(jsonDocument.getEntries()).getNodeByKey("/text"), List.of(jsonDocument));
+
+		JTextField findField = findTextFieldByTooltip(panel, MessageBundle.get("jsonvalue.find.tooltip"));
+		JTextArea editor = findTextArea(panel, "Alpha beta alpha");
+		JButton next = findButtonByTooltip(panel, MessageBundle.get("jsonvalue.find.next.tooltip"));
+		JButton previous = findButtonByTooltip(panel, MessageBundle.get("jsonvalue.find.previous.tooltip"));
+
+		findField.setText("ALPHA");
+
+		assertEquals("1 / 2", findLabel(panel, "1 / 2").getText());
+		assertEquals(0, editor.getSelectionStart());
+		assertEquals(5, editor.getSelectionEnd());
+		assertEquals(2, editor.getHighlighter().getHighlights().length);
+		assertFalse(panel.isDirty());
+
+		next.doClick();
+		assertEquals("2 / 2", findLabel(panel, "2 / 2").getText());
+		assertEquals(11, editor.getSelectionStart());
+		assertEquals(16, editor.getSelectionEnd());
+
+		next.doClick();
+		assertEquals("1 / 2", findLabel(panel, "1 / 2").getText());
+		assertEquals(0, editor.getSelectionStart());
+
+		previous.doClick();
+		assertEquals("2 / 2", findLabel(panel, "2 / 2").getText());
+		assertEquals(11, editor.getSelectionStart());
+	}
+
+	@Test
+	public void findKeyboardActionsFocusClearAndNavigate() {
+		JsonDocument jsonDocument = resource(Map.of("/text", "\"one two one\""));
+		JsonValueEditorPanel panel = new JsonValueEditorPanel(testActions(jsonDocument));
+		panel.setNode(new JsonTreeModel(jsonDocument.getEntries()).getNodeByKey("/text"), List.of(jsonDocument));
+
+		JTextField findField = findTextFieldByTooltip(panel, MessageBundle.get("jsonvalue.find.tooltip"));
+		JTextArea editor = findTextArea(panel, "one two one");
+		findField.setText("one");
+		findField.setSelectionStart(0);
+		findField.setSelectionEnd(0);
+
+		runAction(panel, panel, KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK));
+		assertEquals(0, findField.getSelectionStart());
+		assertEquals(3, findField.getSelectionEnd());
+
+		runAction(panel, findField, KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0));
+		assertEquals(8, editor.getSelectionStart());
+		runAction(panel, findField, KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0));
+		assertEquals(0, editor.getSelectionStart());
+		runAction(panel, findField, KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK));
+		assertEquals(8, editor.getSelectionStart());
+		runAction(panel, findField, KeyStroke.getKeyStroke(KeyEvent.VK_F3, InputEvent.SHIFT_DOWN_MASK));
+		assertEquals(0, editor.getSelectionStart());
+
+		runAction(panel, findField, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0));
+		assertEquals("", findField.getText());
+		assertEquals("0 / 0", findLabel(panel, "0 / 0").getText());
+		assertEquals(0, editor.getHighlighter().getHighlights().length);
+	}
+
+	@Test
+	public void findStateClearsWhenQueryOrNodeChanges() {
+		JsonDocument jsonDocument = resource(Map.of("/first", "\"find me\"", "/second", "\"other\""));
+		JsonValueEditorPanel panel = new JsonValueEditorPanel(testActions(jsonDocument));
+		panel.setNode(new JsonTreeModel(jsonDocument.getEntries()).getNodeByKey("/first"), List.of(jsonDocument));
+
+		JTextField findField = findTextFieldByTooltip(panel, MessageBundle.get("jsonvalue.find.tooltip"));
+		JTextArea firstEditor = findTextArea(panel, "find me");
+		findField.setText("find");
+		assertEquals(1, firstEditor.getHighlighter().getHighlights().length);
+
+		findField.setText("");
+		assertEquals("0 / 0", findLabel(panel, "0 / 0").getText());
+		assertEquals(0, firstEditor.getHighlighter().getHighlights().length);
+
+		findField.setText("find");
+		panel.setNode(new JsonTreeModel(jsonDocument.getEntries()).getNodeByKey("/second"), List.of(jsonDocument));
+		assertEquals("", findField.getText());
+		assertEquals("0 / 0", findLabel(panel, "0 / 0").getText());
+		assertEquals(0, firstEditor.getHighlighter().getHighlights().length);
+	}
 	
 	@Test
 	public void footerButtonsUseDefaultShapeWithApplyAccent() {
@@ -789,6 +913,20 @@ public class JsonValueEditorPanelTest {
 		Object style = component.getClientProperty(FlatClientProperties.STYLE);
 		assertTrue(style != null && style.toString().contains(expected));
 	}
+
+	private static void runAction(JComponent root, JComponent component, KeyStroke keyStroke) {
+		Object key = component.getInputMap(JComponent.WHEN_FOCUSED).get(keyStroke);
+		if (key == null) {
+			key = component.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).get(keyStroke);
+		}
+		assertNotNull(key, keyStroke.toString());
+		Action action = component.getActionMap().get(key);
+		if (action == null) {
+			action = root.getActionMap().get(key);
+		}
+		assertNotNull(action, keyStroke.toString());
+		action.actionPerformed(new java.awt.event.ActionEvent(component, java.awt.event.ActionEvent.ACTION_PERFORMED, key.toString()));
+	}
 	
 	private static JLabel findLabel(Container container, String text) {
 		for (Component component : container.getComponents()) {
@@ -865,6 +1003,21 @@ public class JsonValueEditorPanelTest {
 		return null;
 	}
 
+	private static JTextField findTextFieldByTooltip(Container container, String tooltip) {
+		for (Component component : container.getComponents()) {
+			if (component instanceof JTextField textField && tooltip.equals(textField.getToolTipText())) {
+				return textField;
+			}
+			if (component instanceof Container child) {
+				JTextField textField = findTextFieldByTooltip(child, tooltip);
+				if (textField != null) {
+					return textField;
+				}
+			}
+		}
+		return null;
+	}
+
 	private static JToggleButton findToggleButton(Container container, String text) {
 		for (Component component : container.getComponents()) {
 			if (component instanceof JToggleButton toggleButton && text.equals(toggleButton.getText())) {
@@ -930,6 +1083,21 @@ public class JsonValueEditorPanelTest {
 			}
 			if (component instanceof Container child) {
 				JButton button = findButton(child, text);
+				if (button != null) {
+					return button;
+				}
+			}
+		}
+		return null;
+	}
+
+	private static JButton findButtonByTooltip(Container container, String tooltip) {
+		for (Component component : container.getComponents()) {
+			if (component instanceof JButton button && tooltip.equals(button.getToolTipText())) {
+				return button;
+			}
+			if (component instanceof Container child) {
+				JButton button = findButtonByTooltip(child, tooltip);
 				if (button != null) {
 					return button;
 				}

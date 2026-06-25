@@ -81,6 +81,22 @@ public class EditorOpenSelectionTest {
 		}
 	}
 
+	@Test
+	public void openingMissingPathRemovesItFromHistory() throws Exception {
+		MessageBundle.loadResources();
+		Path missing = tempDir.resolve("missing.json");
+		Editor editor = setupEditor();
+		EditorSettings settings = (EditorSettings) getField(editor, "settings");
+		settings.setHistory(new ArrayList<>(java.util.List.of(missing.toString(), "kept.json")));
+		try {
+			editor.openPath(missing, false);
+
+			assertEquals(java.util.List.of("kept.json"), settings.getHistory());
+		} finally {
+			editor.dispose();
+		}
+	}
+
 	private static Editor setupEditor() throws Exception {
 		Editor editor = new Editor();
 		EditorSettings settings = (EditorSettings) getField(editor, "settings");
