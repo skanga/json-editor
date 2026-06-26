@@ -7,7 +7,6 @@ The editor loads a JSON document into a navigable tree, shows the selected node 
 ## Features
 
 - Open a `.json` file from the command line, file picker, recent-file history, or drag and drop.
-- Automatically remove missing files from the recent-file history when opened.
 - Browse nested object and array content in a JSON tree.
 - Filter the tree by JSON path, visible key name, or value text.
 - Edit values as typed JSON literals or raw text.
@@ -20,33 +19,19 @@ The editor loads a JSON document into a navigable tree, shows the selected node 
 - Switch between light and dark editor themes.
 - Use localized UI strings from resource bundles.
 
-## Duplicate Key Handling
-
-JSON object keys are expected to be unique, but real files sometimes contain duplicates:
-
-```json
-{
-  "role": "user",
-  "role": "admin"
-}
-```
-
-The editor uses Gson for normal JSON loading, which keeps the last value for a duplicated key. To avoid silently hiding that behavior, JSON Editor also runs a lazy duplicate-key scan after the file is loaded.
-
-When duplicates are found, the editor shows a warning panel at the top of the detail view:
-
-```text
-WARNING: Duplicate JSON keys detected. The editor loaded the last value for each duplicate key. Saving the JSON file will delete all the duplicate values. The first duplicate is: /path/to/key
-```
-
-The warning can be dismissed after review. If you try to save a file that originally contained duplicate keys, the editor asks for confirmation because saving rewrites the JSON and removes earlier duplicate values.
-
 ## Requirements
 
 - Java 21 or newer
 - Maven 3.9 or newer for local builds
 
-## Run
+## Quickstart
+Download the latest json-editor.jar from Github Releases:
+https://github.com/skanga/json-editor/releases and run it
+```sh
+java -jar json-editor.jar
+```
+
+## Build and Run
 
 Build the application first:
 
@@ -123,6 +108,27 @@ src/test/java/com/skanga/jsoneditor          Unit and UI behavior tests
 ```
 
 The `data/` directory is intentionally ignored and is not part of the repository.
+
+## Duplicate Key Handling
+
+JSON object keys are expected to be unique, but real files sometimes contain duplicates:
+
+```json
+{
+  "role": "user",
+  "role": "admin"
+}
+```
+
+The editor uses Gson for normal JSON loading, which keeps the last value for a duplicated key. To avoid silently hiding that behavior, JSON Editor also runs a lazy duplicate-key scan after the file is loaded.
+
+When duplicates are found, the editor shows a warning panel at the top of the detail view:
+
+```text
+WARNING: Duplicate JSON keys detected. The editor loaded the last value for each duplicate key. Saving the JSON file will delete all the duplicate values. The first duplicate is: /path/to/key
+```
+
+The warning can be dismissed after review. If you try to save a file that originally contained duplicate keys, the editor asks for confirmation because saving rewrites the JSON and removes earlier duplicate values.
 
 ## Releases
 
