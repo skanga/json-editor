@@ -57,13 +57,13 @@ mvn package
 Run without arguments to open the last file from history:
 
 ```sh
-java -jar target/json-editor-0.1.1.jar
+java -jar target/json-editor.jar
 ```
 
 Start with a specific JSON file:
 
 ```sh
-java -jar target/json-editor-0.1.1.jar path/to/file.json
+java -jar target/json-editor.jar path/to/file.json
 ```
 
 ## Editing Model
@@ -130,19 +130,19 @@ Published releases are available on GitHub:
 
 https://github.com/skanga/json-editor/releases
 
-The current release line is `v0.1.1`, which adds value-editor find and recent-file cleanup.
-
 For local release builds:
 
 ```sh
 mvn clean package
 ```
 
-The runnable shaded JAR is written to:
+The runnable shaded JAR is written to a stable local path:
 
 ```text
-target/json-editor-0.1.1.jar
+target/json-editor.jar
 ```
+
+Release tags and uploaded JAR asset names are derived from `pom.xml` by `scripts/release.ps1`.
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes.
 

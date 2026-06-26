@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.skanga</groupId>
 	<artifactId>json-editor</artifactId>
-	<version>0.1</version>
+	<version>0.1.1</version>
 	<packaging>jar</packaging>
 	<properties>
 		<maven.compiler.release>21</maven.compiler.release>
@@ -48,6 +48,7 @@
 		</dependency>
 	</dependencies>
 	<build>
+		<finalName>json-editor</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -63,6 +64,11 @@
 				<version>${maven.jar.plugin.version}</version>
 				<configuration>
 					<forceCreation>true</forceCreation>
+					<archive>
+						<manifest>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+						</manifest>
+					</archive>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -97,6 +103,7 @@
 									<mainClass>com.skanga.jsoneditor.Main</mainClass>
 									<manifestEntries>
 										<Multi-Release>true</Multi-Release>
+										<Implementation-Version>${project.version}</Implementation-Version>
 									</manifestEntries>
 								</transformer>
 							</transformers>

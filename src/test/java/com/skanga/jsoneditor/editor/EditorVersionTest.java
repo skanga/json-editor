@@ -1,7 +1,12 @@
 package com.skanga.jsoneditor.editor;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
@@ -24,5 +29,36 @@ public class EditorVersionTest {
 	public void newerVersionFallsBackForNonSemanticVersions() {
 		assertTrue(Editor.isNewerVersion("release-a", "release-b"));
 		assertFalse(Editor.isNewerVersion("release-b", "release-a"));
+	}
+
+	@Test
+	public void editorVersionIsNotHardcodedInSource() throws Exception {
+		String source = Files.readString(Path.of("src/main/java/com/skanga/jsoneditor/editor/Editor.java"));
+
+		assertFalse(source.contains("VERSION = \""));
+	}
+
+	@Test
+	public void readmeDoesNotHardcodeCurrentReleaseVersion() throws Exception {
+		String readme = Files.readString(Path.of("README.md"));
+
+		assertFalse(readme.contains("current release line"));
+		assertFalse(Pattern.compile("json-editor-[0-9]+\\.[0-9]+\\.[0-9]+\\.jar").matcher(readme).find());
+		assertFalse(readme.contains("json-editor-<version>.jar"));
+		assertTrue(readme.contains("target/json-editor.jar"));
+	}
+
+	@Test
+	public void releaseScriptDerivesTagAndArtifactFromMavenVersion() throws Exception {
+		String script = Files.readString(Path.of("scripts/release.ps1"));
+
+		assertTrue(script.contains("help:evaluate"));
+		assertTrue(script.contains("project.version"));
+		assertTrue(script.contains("\"v$version\""));
+		assertTrue(script.contains("json-editor-$version.jar"));
+		assertTrue(script.contains("target/json-editor.jar"));
+		assertTrue(script.contains("Copy-Item"));
+		assertNotNull(Pattern.compile("\\$version\\s*=").matcher(script).results().findFirst().orElse(null));
+		assertFalse(Pattern.compile("0\\.1\\.1|v0\\.1\\.1").matcher(script).find());
 	}
 }

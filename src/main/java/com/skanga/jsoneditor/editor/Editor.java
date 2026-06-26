@@ -101,7 +101,7 @@ public class Editor extends JFrame {
     private final static int RESTORE_EXPANDED_NODE_LIMIT = 5000;
 
     public final static String TITLE = "JSON Editor";
-    public final static String VERSION = "0.1";
+    public final static String VERSION = appVersion();
     public final static String GITHUB_USER = "skanga";
     public final static String GITHUB_PROJECT = "json-editor";
     public final static String SETTINGS_FILE = ".json-editor";
@@ -113,6 +113,11 @@ public class Editor extends JFrame {
             Locale.of("nl"),
             Locale.of("pt", "BR"),
             Locale.of("es", "ES")));
+
+    private static String appVersion() {
+        String version = Editor.class.getPackage().getImplementationVersion();
+        return version == null || version.isBlank() ? "0.0.0-dev" : version;
+    }
 
     private EditorProject project;
     private final EditorSettings settings = new EditorSettings();

@@ -44,4 +44,12 @@ public class DuplicateJsonKeyDetectorTest {
 
 		assertEquals(List.of(new DuplicateJsonKey("role", "/items/0/role")), duplicates);
 	}
+
+	@Test
+	public void duplicateScannerAcceptsLenientObjectNamesLikeMainLoader() throws Exception {
+		List<DuplicateJsonKey> duplicates = DuplicateJsonKeyDetector.findDuplicates(
+				"[{color:\"red\",color:\"blue\"}]");
+
+		assertEquals(List.of(new DuplicateJsonKey("color", "/0/color")), duplicates);
+	}
 }

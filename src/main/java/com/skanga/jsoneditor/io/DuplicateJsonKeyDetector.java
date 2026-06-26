@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.google.gson.Strictness;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.skanga.jsoneditor.util.DuplicateJsonKey;
@@ -20,6 +21,7 @@ public final class DuplicateJsonKeyDetector {
 	public static List<DuplicateJsonKey> findDuplicates(String json) throws IOException {
 		List<DuplicateJsonKey> duplicates = new ArrayList<>();
 		JsonReader reader = new JsonReader(new StringReader(json));
+		reader.setStrictness(Strictness.LENIENT);
 		scanValue(reader, "", duplicates);
 		return List.copyOf(duplicates);
 	}
