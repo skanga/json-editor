@@ -50,15 +50,16 @@ public class EditorVersionTest {
 
 	@Test
 	public void releaseScriptDerivesTagAndArtifactFromMavenVersion() throws Exception {
-		String script = Files.readString(Path.of("scripts/release.ps1"));
+		assertFalse(Files.exists(Path.of("scripts/release.ps1")));
+		String script = Files.readString(Path.of("scripts/release.py"));
 
 		assertTrue(script.contains("help:evaluate"));
 		assertTrue(script.contains("project.version"));
-		assertTrue(script.contains("\"v$version\""));
-		assertTrue(script.contains("json-editor-$version.jar"));
-		assertTrue(script.contains("target/json-editor.jar"));
-		assertTrue(script.contains("Copy-Item"));
-		assertNotNull(Pattern.compile("\\$version\\s*=").matcher(script).results().findFirst().orElse(null));
+		assertTrue(script.contains("f\"v{version}\""));
+		assertTrue(script.contains("json-editor-{version}.jar"));
+		assertTrue(script.contains("\"target\" / \"json-editor.jar\""));
+		assertTrue(script.contains("shutil.copyfile"));
+		assertNotNull(Pattern.compile("version\\s*=").matcher(script).results().findFirst().orElse(null));
 		assertFalse(Pattern.compile("0\\.1\\.1|v0\\.1\\.1").matcher(script).find());
 	}
 }

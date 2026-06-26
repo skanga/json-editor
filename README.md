@@ -148,7 +148,11 @@ The runnable shaded JAR is written to a stable local path:
 target/json-editor.jar
 ```
 
-Release tags and uploaded JAR asset names are derived from `pom.xml` by `scripts/release.ps1`.
+Release tags and uploaded JAR asset names are derived from `pom.xml` by `scripts/release.py`:
+
+```sh
+python scripts/release.py
+```
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
