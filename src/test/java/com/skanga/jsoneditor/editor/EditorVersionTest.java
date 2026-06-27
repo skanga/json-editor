@@ -53,12 +53,15 @@ public class EditorVersionTest {
 		assertFalse(Files.exists(Path.of("scripts/release.ps1")));
 		String script = Files.readString(Path.of("scripts/release.py"));
 
-		assertTrue(script.contains("help:evaluate"));
+		assertFalse(script.contains("help:evaluate"));
 		assertTrue(script.contains("project.version"));
+		assertTrue(script.contains("ElementTree"));
 		assertTrue(script.contains("f\"v{version}\""));
 		assertTrue(script.contains("json-editor-{version}.jar"));
 		assertTrue(script.contains("\"target\" / \"json-editor.jar\""));
 		assertTrue(script.contains("shutil.copyfile"));
+		assertTrue(script.contains("shutil.which"));
+		assertTrue(script.contains("\"mvn.cmd\""));
 		assertNotNull(Pattern.compile("version\\s*=").matcher(script).results().findFirst().orElse(null));
 		assertFalse(Pattern.compile("0\\.1\\.1|v0\\.1\\.1").matcher(script).find());
 	}
