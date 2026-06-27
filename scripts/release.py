@@ -76,12 +76,10 @@ def main() -> None:
     version = maven_version()
     tag = f"v{version}"
     local_jar = ROOT / "target" / "json-editor.jar"
-    asset = ROOT / "target" / f"json-editor-{version}.jar"
 
     run("mvn", "-q", "clean", "package")
     if not local_jar.exists():
         raise SystemExit(f"Expected local JAR not found: {local_jar}")
-    shutil.copyfile(local_jar, asset)
 
     require_clean_worktree()
     run("git", "tag", tag)
@@ -91,7 +89,7 @@ def main() -> None:
         "release",
         "create",
         tag,
-        str(asset),
+        str(local_jar),
         "--title",
         tag,
         "--notes-file",

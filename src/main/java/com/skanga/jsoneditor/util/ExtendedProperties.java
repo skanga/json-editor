@@ -167,7 +167,7 @@ public class ExtendedProperties extends Properties {
 			try {
 				return Integer.parseInt(value);
 			} catch (NumberFormatException e) {
-				log.warn("Unable to parse integer property value " + value);
+				log.debug("Unable to parse integer property value " + value);
 			}
 		}
 		return null;

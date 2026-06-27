@@ -57,9 +57,9 @@ public class EditorVersionTest {
 		assertTrue(script.contains("project.version"));
 		assertTrue(script.contains("ElementTree"));
 		assertTrue(script.contains("f\"v{version}\""));
-		assertTrue(script.contains("json-editor-{version}.jar"));
+		assertFalse(script.contains("json-editor-{version}.jar"));
 		assertTrue(script.contains("\"target\" / \"json-editor.jar\""));
-		assertTrue(script.contains("shutil.copyfile"));
+		assertFalse(script.contains("shutil.copyfile"));
 		assertTrue(script.contains("shutil.which"));
 		assertTrue(script.contains("\"mvn.cmd\""));
 		assertNotNull(Pattern.compile("version\\s*=").matcher(script).results().findFirst().orElse(null));
