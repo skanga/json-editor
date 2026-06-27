@@ -92,8 +92,6 @@ def main() -> None:
         str(local_jar),
         "--title",
         tag,
-        "--notes-file",
-        "CHANGELOG.md",
     )
 
 
