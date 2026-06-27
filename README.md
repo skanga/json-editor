@@ -4,6 +4,8 @@ JSON Editor is a desktop Java Swing application for inspecting and editing JSON 
 
 The editor loads a JSON document into a navigable tree, shows the selected node as an editable value, and supports common structural operations such as adding, renaming, duplicating, deleting, moving, and searching nodes.
 
+![JSON Editor screenshot](screenshot.png)
+
 ## Features
 
 - Open a `.json` file from the command line, file picker, recent-file history, or drag and drop.
